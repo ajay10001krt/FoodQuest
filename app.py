@@ -282,10 +282,40 @@ if st.sidebar.button("Logout"):
 
 page = st.session_state.selected_page
 
-# ---- HOME ----
+# ---- 🏠 HOME PAGE ----
 if page == "Home":
-    st.title("🏠 Welcome to FoodQuest")
-    st.write("Discover restaurants, earn badges, and level up your food journey!")
+    st.title("🍴 Welcome to FoodQuest!")
+    st.markdown("""
+    ### 🌍 Embark on your culinary adventure!
+    **FoodQuest** helps you discover amazing restaurants, earn foodie badges, and climb the leaderboard as you explore cuisines across India.  
+    Whether you're searching for a **local gem** or a **hidden flavor**, we've got you covered. 😋  
+    """)
+
+    st.markdown("#### ✨ What You Can Do Here:")
+    st.markdown("""
+    - 🍽️ **Get personalized restaurant recommendations** based on your favorites  
+    - 🎯 **Recommendation based on preferences** like cuisine or location  
+    - 🏅 **Earn points and unlock badges** every time you explore  
+    - 🌐 **Visualize restaurants on an interactive map**  
+    - 🧭 **Track your foodie journey** with your profile and leaderboard rank
+    """)
+
+    st.markdown("---")
+    st.markdown("#### 🚀 Quick Start Guide:")
+    st.markdown("""
+    1. Go to **Recommend by Restaurant** or **Recommend by Preferences** from the sidebar  
+    2. Choose a city and search your favorite restaurant or cuisine  
+    3. Click **Try 🍽️** to earn points and level up your badge!  
+    """)
+
+    st.markdown("---")
+    st.markdown("""
+    #### ❤️ Powered by Data, Driven by Taste  
+    *FoodQuest combines data science, intelligent recommendations, and community spirit to make dining fun and rewarding.*  
+    """)
+
+    st.info("Tip: Dark Mode looks delicious too 😎 — try switching it from the sidebar!")
+
 
 # ---- RECOMMEND BY RESTAURANT ----
 elif page == "Recommend by Restaurant":
