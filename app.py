@@ -299,6 +299,19 @@ if page == "Home":
 
     st.markdown("---")
 
+    # 💡 Motivation Quote
+    import random
+    quotes = [
+        "“Good food is the foundation of genuine happiness.” 🍰",
+        "“You don’t need a silver fork to eat good food.” 🍴",
+        "“The best memories are made around the table.” 🧆",
+        "“One cannot think well, love well, sleep well, if one has not dined well.” 🍜",
+        "“Life is uncertain. Eat dessert first.” 🍨"
+    ]
+    st.info(random.choice(quotes))
+
+    st.markdown("---")
+
     # 🌟 Quick Stats Section
     import pandas as pd
     df = pd.read_csv("data/Dataset.csv")
@@ -336,19 +349,6 @@ if page == "Home":
         to suggest the most relevant restaurants for you. <br>
         It’s not random — it’s intelligence served fresh! ⚡
     """, unsafe_allow_html=True)
-
-    st.markdown("---")
-
-    # 💡 Motivation Quote
-    import random
-    quotes = [
-        "“Good food is the foundation of genuine happiness.” 🍰",
-        "“You don’t need a silver fork to eat good food.” 🍴",
-        "“The best memories are made around the table.” 🧆",
-        "“One cannot think well, love well, sleep well, if one has not dined well.” 🍜",
-        "“Life is uncertain. Eat dessert first.” 🍨"
-    ]
-    st.info(random.choice(quotes))
 
     st.markdown("---")
 
