@@ -1,0 +1,720 @@
+import streamlit as st
+from model.recommender import FoodRecommender
+from utils.gamification import (
+    init_db, register_user, validate_user, reset_password,
+    add_points, get_user_data, assign_badge, get_leaderboard
+)
+import pandas as pd
+
+# ---- PAGE CONFIG ----
+st.set_page_config(page_title="FoodQuest", layout="wide")
+init_db()
+
+@st.cache_resource
+def load_recommender():
+    return FoodRecommender("data/Dataset.csv")
+
+recommender = load_recommender()
+
+# ---- THEME TOGGLE STATE ----
+if "theme" not in st.session_state:
+    st.session_state.theme = "light"
+
+# ---- LOGIN / REGISTER / RESET ----
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+if "username" not in st.session_state:
+    st.session_state.username = ""
+if "recommendations" not in st.session_state:
+    st.session_state.recommendations = []
+if "tried_restaurants" not in st.session_state:
+    st.session_state.tried_restaurants = []
+if "tried_set" not in st.session_state:
+    st.session_state.tried_set = set()
+
+# ---- PAGE STATE ----
+if "page" not in st.session_state:
+    st.session_state.page = "Home"
+
+
+# ---- LOGIN PAGE ----
+if not st.session_state.logged_in:
+    # Hide sidebar
+    st.markdown("""
+        <style>
+        [data-testid="stSidebar"] {display: none;}
+        [data-testid="stSidebarNav"] {display: none;}
+        [data-testid="stAppViewContainer"] {margin-left: 0 !important;}
+        </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown("<h1 style='text-align:center;'>🍽️ FoodQuest</h1>", unsafe_allow_html=True)
+    tab1, tab2, tab3 = st.tabs(["🔑 Login", "🆕 Register", "🔄 Reset Password"])
+
+    with tab1:
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        if st.button("Login"):
+            user = validate_user(username, password)
+            if user:
+                st.session_state.logged_in = True
+                st.session_state.username = username
+                st.success(f"Welcome back, {username}!")
+                st.rerun()
+            else:
+                st.error("Invalid username or password")
+
+    with tab2:
+        new_user = st.text_input("Choose Username")
+        new_pass = st.text_input("Choose Password", type="password")
+        if st.button("Register"):
+            if register_user(new_user, new_pass):
+                st.success("✅ Account created successfully! Please login now.")
+            else:
+                st.warning("Username already exists! Try another one.")
+
+    with tab3:
+        user_reset = st.text_input("Enter Username")
+        new_pass_reset = st.text_input("Enter New Password", type="password")
+        if st.button("Reset Password"):
+            if reset_password(user_reset, new_pass_reset):
+                st.success("Password reset successful! Login again.")
+            else:
+                st.error("Username not found!")
+
+    st.stop()
+
+# ---- SIDEBAR ----
+with st.sidebar:
+    # ---- THEME TOGGLE ABOVE USERNAME ----
+    theme_choice = st.radio("🌓 Theme", ["🌞 Light", "🌙 Dark"],
+                            index=0 if st.session_state.theme == "light" else 1,
+                            key="theme_toggle")
+
+    if (theme_choice == "🌙 Dark" and st.session_state.theme != "dark"):
+        st.session_state.theme = "dark"
+        st.rerun()
+    elif (theme_choice == "🌞 Light" and st.session_state.theme != "light"):
+        st.session_state.theme = "light"
+        st.rerun()
+
+    # USER CARD
+    username = st.session_state.username
+    st.markdown(f"""
+    <div style='background:linear-gradient(135deg,#ffdde1 0%,#ee9ca7 100%);
+                padding:15px;border-radius:20px;
+                box-shadow:0 4px 8px rgba(0,0,0,0.15);text-align:center;'>
+        <h3>👋 {username}</h3>
+    </div>
+    """, unsafe_allow_html=True)
+
+# ---- ADAPTIVE THEME CSS ----
+if st.session_state.theme == "dark":
+    st.markdown("""
+    <style>
+    body, [data-testid="stAppViewContainer"] {
+        background: linear-gradient(135deg,#1e1e1e 0%,#2a2a2a 100%) !important;
+        color: #f8f8f8 !important;
+    }
+
+    [data-testid="stSidebar"] {
+        background: linear-gradient(135deg,#232323 0%,#1b1b1b 100%) !important;
+        color: #f8f8f8 !important;
+    }
+
+    /* --- Make all text visible --- */
+    h1, h2, h3, h4, h5, h6, p, span, label, div, li {
+        color: #f8f8f8 !important;
+    }
+
+    /* --- Inputs, dropdowns, text boxes --- */
+    input, select, textarea {
+        background-color: #2b2b2b !important;
+        color: #f8f8f8 !important;
+        border: 1px solid #555 !important;
+        border-radius:6px !important;
+        padding:6px 10px !important;
+    }
+
+    div[data-baseweb="select"] > div {
+        background-color:#2b2b2b !important;
+        color:#f8f8f8 !important;
+        border: 1px solid #555 !important;
+        border-radius:6px !important;
+    }
+
+    /* --- Radio buttons / labels / markdowns --- */
+    [data-testid="stRadio"], [data-testid="stMarkdownContainer"], [data-testid="stText"], label {
+        color: #f8f8f8 !important;
+    }
+
+    /* --- Buttons --- */
+    div.stButton > button:first-child {
+        background-color:#ff4b4b !important;
+        color:#fff !important;
+        box-shadow:0 0 10px rgba(255,75,75,0.7);
+        font-weight:bold;
+        border-radius:10px !important;
+        transition: all 0.2s ease;
+    }
+    div.stButton > button:first-child:hover {
+        background-color:#ff1e1e !important;
+        transform: scale(1.05);
+    }
+    /* --- Fix invisible text inside dropdown search input --- */
+    div[data-baseweb="select"] input {
+        color: #f8f8f8 !important;          /* Make typed text visible */
+        background-color: #2b2b2b !important;
+    }
+    div[data-baseweb="select"] [role="option"] {
+        background-color: #2b2b2b !important;  /* Dropdown list background */
+        color: #f8f8f8 !important;
+    }
+    div[data-baseweb="select"] [role="option"]:hover {
+        background-color: #3b3b3b !important;  /* Highlight hovered options */
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+else:
+    st.markdown("""
+    <style>
+    body, [data-testid="stAppViewContainer"] {
+        background: linear-gradient(135deg,#f8f9fa 0%,#ffe4ec 100%) !important;
+        color: #222 !important;
+    }
+
+    [data-testid="stSidebar"] {
+        background: linear-gradient(135deg,#fff3f6 0%,#ffe4ec 100%) !important;
+        color: #222 !important;
+    }
+
+    /* --- Light mode readable text --- */
+    h1, h2, h3, h4, h5, h6, p, span, label, div, li {
+        color: #222 !important;
+    }
+
+    /* --- Inputs, dropdowns, text boxes --- */
+    input, select, textarea {
+        background-color:#fff !important;
+        color:#222 !important;
+        border:1px solid #ccc !important;
+        border-radius:6px !important;
+        padding:6px 10px !important;
+    }
+
+    div[data-baseweb="select"] > div {
+        background-color:#fff !important;
+        color:#222 !important;
+        border:1px solid #ccc !important;
+        border-radius:6px !important;
+    }
+
+    /* --- Buttons --- */
+    div.stButton > button:first-child {
+        background-color:#ff4b4b !important;
+        color:white !important;
+        box-shadow:0 0 10px rgba(255,75,75,0.4);
+        font-weight:bold;
+        border-radius:10px !important;
+        transition: all 0.2s ease;
+    }
+    div.stButton > button:first-child:hover {
+        background-color:#ff1e1e !important;
+        transform: scale(1.05);
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# ---- SIDEBAR ACTIVE PAGE & HOVER EFFECT ----
+st.markdown("""
+<style>
+/* Smooth hover for sidebar items */
+[data-testid="stSidebar"] [role="radiogroup"] > label:hover {
+    background: rgba(255, 75, 75, 0.1) !important;
+    border-radius: 8px;
+    transition: all 0.2s ease-in-out;
+    transform: scale(1.02);
+}
+
+/* Active page glow */
+[data-testid="stSidebar"] [aria-checked="true"] {
+    background: linear-gradient(90deg, #ff4b4b, #ff9999) !important;
+    color: white !important;
+    font-weight: 600 !important;
+    box-shadow: 0 0 10px rgba(255, 75, 75, 0.6);
+    border-radius: 8px;
+    transform: scale(1.05);
+    transition: all 0.2s ease;
+}
+
+/* Ensure radio label text stays readable */
+[data-testid="stSidebar"] [role="radiogroup"] > label p {
+    color: inherit !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+
+# ---- NAVIGATION ----
+# ---- NAVIGATION (Optimized to remove double-click lag) ----
+if "selected_page" not in st.session_state:
+    st.session_state.selected_page = "Home"
+
+def set_page(page):
+    st.session_state.selected_page = page
+    st.session_state.page = page
+
+page = st.sidebar.radio(
+    "Navigate",
+    ["Home", "Recommend by Restaurant", "Recommend by Preferences", "Leaderboard", "Profile", "Dataset"],
+    index=["Home", "Recommend by Restaurant", "Recommend by Preferences", "Leaderboard", "Profile", "Dataset"]
+          .index(st.session_state.selected_page),
+    key="page_radio",
+    on_change=lambda: set_page(st.session_state.page_radio),
+)
+
+st.sidebar.write("---")
+if st.sidebar.button("Logout"):
+    st.session_state.logged_in = False
+    st.session_state.username = ""
+    st.rerun()
+
+page = st.session_state.selected_page
+
+# ---- HOME ----
+if page == "Home":
+    st.title("🏠 Welcome to FoodQuest")
+    st.write("Discover restaurants, earn badges, and level up your food journey!")
+
+# ---- RECOMMEND BY RESTAURANT ----
+elif page == "Recommend by Restaurant":
+    st.title("🤖 Recommend by Restaurant")
+
+    try:
+        df = pd.read_csv("data/Dataset.csv").fillna("")
+    except FileNotFoundError:
+        st.error("Dataset not found in 'data/Dataset.csv'")
+        st.stop()
+
+    city = st.selectbox("Select City:", sorted(df["City"].dropna().unique().tolist()))
+    name = st.text_input("Enter restaurant name:")
+
+    if st.button("Recommend"):
+        if not name.strip():
+            st.warning("Please enter a restaurant name first.")
+        else:
+            res = recommender.recommend(name, city)
+            if res:
+                st.session_state.recommendations = [
+                    r for r in res if r[2].lower().strip() == city.lower().strip()
+                ]
+                if st.session_state.recommendations:
+                    st.success(f"Showing similar restaurants to **{name.title()}** in **{city.title()}** 🍽️")
+                else:
+                    st.warning(f"No similar restaurants found for '{name.title()}' in {city.title()}.")
+            else:
+                st.warning("No matching restaurant found in dataset!")
+
+    if st.session_state.recommendations:
+        st.markdown("### 🍴 Recommended Restaurants:")
+        for idx, (rname, cuisine, cty, score) in enumerate(st.session_state.recommendations):
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                st.markdown(f"**{rname}** — _{cuisine}_ ({cty}) | 🔹 {score}")
+            with col2:
+                btn_key = f"try_{idx}_{rname}"
+                if st.button("Try 🍽️", key=btn_key):
+                    if rname not in st.session_state.tried_set:
+                        add_points(username, 5)
+                        st.session_state.tried_set.add(rname)
+                        st.success(f"You tried {rname}! +5 points 🎉")
+                    else:
+                        st.info(f"You already tried {rname} before 🍽️")
+
+        # ---- 📍 Map Visualization (All restaurants together) ----
+        st.markdown("---")
+        st.markdown("### 🗺️ Restaurant Locations on Map")
+
+        try:
+            import pydeck as pdk
+            df = pd.read_csv("data/Dataset.csv").fillna("")
+
+            # Normalize restaurant names for matching
+            df["Restaurant Name Clean"] = df["Restaurant Name"].str.strip().str.lower()
+
+            # Extract names from recommendations (case-insensitive)
+            rec_names = [r[0].strip().lower() for r in st.session_state.recommendations]
+
+            # Match restaurants
+            map_df = df[df["Restaurant Name Clean"].isin(rec_names)]
+
+            # Clean up and check coordinates
+            map_df["Latitude"] = pd.to_numeric(map_df["Latitude"], errors="coerce")
+            map_df["Longitude"] = pd.to_numeric(map_df["Longitude"], errors="coerce")
+            map_df = map_df.dropna(subset=["Latitude", "Longitude"])
+
+            if not map_df.empty:
+                # Choose color scheme based on theme
+                if st.session_state.theme == "dark":
+                    point_color = [255, 100, 100]
+                else:
+                    point_color = [255, 50, 50]
+
+                # Create layer
+                # --- Define the map layer ---
+                layer = pdk.Layer(
+                    "ScatterplotLayer",
+                    data=map_df,
+                    get_position='[Longitude, Latitude]',
+                    get_fill_color=point_color,
+                    get_radius=80,                   # fixed-size radius (meters)
+                    radius_scale=10,                 # fine-tune scaling
+                    radius_min_pixels=4,             # min visible size
+                    radius_max_pixels=12,            # max visible size
+                    stroked=True,
+                    filled=True,
+                    line_width_min_pixels=1,
+                    get_line_color=[0, 0, 0, 100],   # thin border for clarity
+                    opacity=0.45,                    # ✅ transparency for overlapping points
+                    pickable=True
+                )
+
+                # Center the view
+                mean_lat = map_df["Latitude"].mean()
+                mean_lon = map_df["Longitude"].mean()
+                view_state = pdk.ViewState(latitude=mean_lat, longitude=mean_lon, zoom=10, pitch=0)
+
+                # Tooltip info
+                tooltip = {
+                    "html": "<b>{Restaurant Name}</b><br/>{Cuisines}<br/>⭐ {Aggregate rating}",
+                    "style": {
+                        "backgroundColor": "rgba(30,30,30,0.85)" if st.session_state.theme == "dark" else "rgba(255,255,255,0.9)",
+                        "color": "#fff" if st.session_state.theme == "dark" else "#000",
+                        "borderRadius": "6px",
+                        "padding": "6px"
+                    }
+                }
+
+                st.pydeck_chart(pdk.Deck(layers=[layer], initial_view_state=view_state, tooltip=tooltip, map_style=None))
+            else:
+                st.info("No valid location data found for these restaurants.")
+        except Exception as e:
+            st.warning(f"Could not load map data: {e}")
+
+# ---- RECOMMEND BY PREFERENCES ----
+elif page == "Recommend by Preferences":
+    st.title("🎯 Recommend by Preferences")
+    cuisine = st.text_input("Cuisine:")
+    city = st.text_input("City:")
+    price = st.selectbox("💰 Price Range", [1, 2, 3, 4])
+    rating = st.slider("⭐ Min Rating", 0.0, 5.0, 3.5, 0.1)
+
+    if st.button("Find Restaurants"):
+        df = pd.read_csv("data/Dataset.csv").fillna('')
+        filtered = df[
+            (df['Cuisines'].str.contains(cuisine, case=False, na=False) if cuisine else True) &
+            (df['City'].str.contains(city, case=False, na=False) if city else True) &
+            (df['Price range'] == price) &
+            (df['Aggregate rating'] >= rating)
+        ]
+        if not filtered.empty:
+            st.session_state.recommendations = list(zip(
+                filtered['Restaurant Name'], filtered['Cuisines'],
+                filtered['City'], filtered['Aggregate rating']
+            ))
+        else:
+            st.warning("No results found.")
+
+    if st.session_state.recommendations:
+        for i, (n, c, ci, r) in enumerate(st.session_state.recommendations[:10]):
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                st.markdown(f"**{n}** — _{c}_ ({ci}) | ⭐ {r}")
+            with col2:
+                btn_key = f"pref_try_{i}_{n}"
+                if st.button("Try 🍽️", key=btn_key):
+                    if n not in st.session_state.tried_set:
+                        add_points(username, 5)
+                        st.session_state.tried_set.add(n)
+                        st.success(f"You tried {n}! +5 points 🎉")
+                    else:
+                        st.info(f"You already tried {n} before 🍽️")
+                    
+        # ---- 📍 Map Visualization (All restaurants together) ----
+        st.markdown("---")
+        st.markdown("### 🗺️ Restaurant Locations on Map")
+
+        try:
+            import pydeck as pdk
+            df = pd.read_csv("data/Dataset.csv").fillna("")
+
+            # Normalize restaurant names for matching
+            df["Restaurant Name Clean"] = df["Restaurant Name"].str.strip().str.lower()
+
+            # Extract names from recommendations (case-insensitive)
+            rec_names = [r[0].strip().lower() for r in st.session_state.recommendations]
+
+            # Match restaurants
+            map_df = df[df["Restaurant Name Clean"].isin(rec_names)]
+
+            # Clean up and check coordinates
+            map_df["Latitude"] = pd.to_numeric(map_df["Latitude"], errors="coerce")
+            map_df["Longitude"] = pd.to_numeric(map_df["Longitude"], errors="coerce")
+            map_df = map_df.dropna(subset=["Latitude", "Longitude"])
+
+            if not map_df.empty:
+                # Choose color scheme based on theme
+                if st.session_state.theme == "dark":
+                    point_color = [255, 100, 100]
+                else:
+                    point_color = [255, 50, 50]
+
+                # Create layer
+                # --- Define the map layer ---
+                layer = pdk.Layer(
+                    "ScatterplotLayer",
+                    data=map_df,
+                    get_position='[Longitude, Latitude]',
+                    get_fill_color=point_color,
+                    get_radius=80,                   # fixed-size radius (meters)
+                    radius_scale=10,                 # fine-tune scaling
+                    radius_min_pixels=4,             # min visible size
+                    radius_max_pixels=12,            # max visible size
+                    stroked=True,
+                    filled=True,
+                    line_width_min_pixels=1,
+                    get_line_color=[0, 0, 0, 100],   # thin border for clarity
+                    opacity=0.45,                    # ✅ transparency for overlapping points
+                    pickable=True
+                )
+
+                # Center the view
+                mean_lat = map_df["Latitude"].mean()
+                mean_lon = map_df["Longitude"].mean()
+                view_state = pdk.ViewState(latitude=mean_lat, longitude=mean_lon, zoom=10, pitch=0)
+
+                # Tooltip info
+                tooltip = {
+                    "html": "<b>{Restaurant Name}</b><br/>{Cuisines}<br/>⭐ {Aggregate rating}",
+                    "style": {
+                        "backgroundColor": "rgba(30,30,30,0.85)" if st.session_state.theme == "dark" else "rgba(255,255,255,0.9)",
+                        "color": "#fff" if st.session_state.theme == "dark" else "#000",
+                        "borderRadius": "6px",
+                        "padding": "6px"
+                    }
+                }
+
+                st.pydeck_chart(pdk.Deck(layers=[layer], initial_view_state=view_state, tooltip=tooltip, map_style=None))
+            else:
+                st.info("No valid location data found for these restaurants.")
+        except Exception as e:
+            st.warning(f"Could not load map data: {e}")
+
+# ---- LEADERBOARD ----
+elif page == "Leaderboard":
+    st.title("🏆 FoodQuest Leaderboard")
+    st.markdown("See who's climbing the culinary ranks 🍴🔥")
+
+    data = get_leaderboard()
+
+    if data:
+        leaderboard_df = pd.DataFrame(data, columns=["Username", "Points"])
+
+        def assign_badge(points):
+            if points >= 220:
+                return "🥇 Cuisine Legend"
+            elif points >= 190:
+                return "🥘 Culinary Hero"
+            elif points >= 160:
+                return "🍣 Fine Dine Expert"
+            elif points >= 130:
+                return "🍱 Gourmet Seeker"
+            elif points >= 100:
+                return "🌮 Taste Adventurer"
+            elif points >= 80:
+                return "🍛 Flavor Chaser"
+            elif points >= 60:
+                return "🍜 Local Foodie"
+            elif points >= 40:
+                return "🍔 Fast-Food Fanatic"
+            elif points >= 20:
+                return "🍕 Street Explorer"
+            else:
+                return "🍴 Foodie Beginner"
+
+
+        leaderboard_df["Badge"] = leaderboard_df["Points"].apply(assign_badge)
+        leaderboard_df = leaderboard_df.sort_values(by="Points", ascending=False).reset_index(drop=True)
+
+        # Theme adaptive leaderboard styling
+        is_dark = st.session_state.theme == "dark"
+        leaderboard_bg = (
+            "linear-gradient(135deg, #2c2c2c, #3a3a3a)" if is_dark else "linear-gradient(135deg, #fff3f6, #ffe4ec)"
+        )
+        row_bg_self = (
+            "background: linear-gradient(90deg, #3a3a3a, #2a2a2a);" if is_dark else "background: linear-gradient(90deg, #fff0f5, #ffe0e9);"
+        )
+        text_color = "#f8f8f8" if is_dark else "#1a1a1a"
+
+        st.markdown(f"""
+        <style>
+        .leaderboard-container {{
+            background: {leaderboard_bg};
+            padding: 15px;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+            color: {text_color};
+        }}
+        .leaderboard-row {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            border-radius: 12px;
+            margin: 6px 0;
+            transition: all 0.3s ease;
+        }}
+        .leaderboard-row:hover {{
+            transform: scale(1.02);
+            box-shadow: 0 0 12px rgba(255,75,75,0.3);
+        }}
+        .rank {{
+            font-weight: bold;
+            font-size: 1.1em;
+            width: 35px;
+        }}
+        .username {{
+            flex-grow: 1;
+            font-weight: 600;
+        }}
+        .points {{
+            font-weight: 600;
+        }}
+        .badge {{
+            margin-right: 8px;
+        }}
+        </style>
+        """, unsafe_allow_html=True)
+
+        st.markdown('<div class="leaderboard-container">', unsafe_allow_html=True)
+
+        for idx, row in leaderboard_df.iterrows():
+            rank_emoji = "🥇" if idx == 0 else "🥈" if idx == 1 else "🥉" if idx == 2 else f"{idx+1}."
+            row_color = row_bg_self if row["Username"] == username else ""
+            st.markdown(
+                f"""
+                <div class="leaderboard-row" style="{row_color}">
+                    <span class="rank">{rank_emoji}</span>
+                    <span class="username">{row['Username']}</span>
+                    <span class="badge">{row['Badge']}</span>
+                    <span class="points">⭐ {row['Points']}</span>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        st.markdown("</div>", unsafe_allow_html=True)
+    else:
+        st.info("No users have earned points yet. Be the first to dine and shine 🌟!")
+
+# ---- PROFILE ----
+elif page == "Profile":
+    st.title("👤 Your Profile")
+    user_data = get_user_data(username)
+    if user_data:
+        points = user_data[2]
+        badge = assign_badge(points)
+        tiers = [
+            ("🍴 Foodie Beginner", 0),
+            ("🍕 Street Explorer", 20),
+            ("🍔 Fast-Food Fanatic", 40),
+            ("🍜 Local Foodie", 60),
+            ("🍛 Flavor Chaser", 80),
+            ("🌮 Taste Adventurer", 100),
+            ("🍱 Gourmet Seeker", 130),
+            ("🍣 Fine Dine Expert", 160),
+            ("🥘 Culinary Hero", 190),
+            ("🥇 Cuisine Legend", 220)
+        ]
+
+        for i, (name, req) in enumerate(tiers):
+            if points < req:
+                next_badge = name
+                prev_req = tiers[i - 1][1] if i > 0 else 0
+                next_req = req
+                break
+        else:
+            next_badge, prev_req, next_req = "🏆 Maxed Out!", 200, 200
+        progress = max(0, min((points - prev_req) / (next_req - prev_req) if next_req > prev_req else 1, 1))
+        st.subheader(f"Username: {user_data[0]}")
+        st.write(f"💰 Points: **{points}**")
+        st.write(f"🏅 Current Badge: **{badge}**")
+        st.markdown("---")
+        st.subheader("🎯 Progress Toward Next Badge")
+        st.markdown(f"""
+        <div style="background:#ddd;border-radius:10px;height:20px;">
+            <div style="width:{progress*100}%;
+                height:100%;border-radius:10px;
+                background:linear-gradient(90deg,#ff4b4b,#ff9b9b);
+                transition:width 0.5s;"></div></div>
+        <p>Next Badge: <b>{next_badge}</b> — {round(progress*100,1)}% complete</p>
+        """, unsafe_allow_html=True)
+    else:
+        st.warning("Profile not found!")
+
+# ---- DATASET ----
+elif page == "Dataset":
+    st.title("📊 Restaurant Dataset Explorer")
+    try:
+        df = pd.read_csv("data/Dataset.csv").fillna("N/A")
+    except FileNotFoundError:
+        st.error("Dataset not found in 'data/Dataset.csv'")
+        st.stop()
+
+    st.markdown("### 🎛️ Choose a filter type to explore:")
+    filter_type = st.radio("Select a filter type:", ["By Restaurant Name", "By City", "By Cuisine"], horizontal=True)
+
+    with st.expander("🔍 Filter Dataset", expanded=True):
+        col1, col2, col3 = st.columns(3)
+        name_filter = city_filter = cuisine_filter = ""
+        with col1:
+            if filter_type == "By Restaurant Name": name_filter = st.text_input("Restaurant Name:")
+            else: st.text_input("Restaurant Name:", disabled=True, placeholder="Disabled")
+        with col2:
+            if filter_type == "By City": city_filter = st.text_input("City:")
+            else: st.text_input("City:", disabled=True, placeholder="Disabled")
+        with col3:
+            if filter_type == "By Cuisine": cuisine_filter = st.text_input("Cuisine:")
+            else: st.text_input("Cuisine:", disabled=True, placeholder="Disabled")
+
+    try:
+        filtered_df = df[
+            (df["Restaurant Name"].str.contains(name_filter, case=False, na=False) if name_filter else True) &
+            (df["City"].str.contains(city_filter, case=False, na=False) if city_filter else True) &
+            (df["Cuisines"].str.contains(cuisine_filter, case=False, na=False) if cuisine_filter else True)
+        ]
+    except Exception:
+        filtered_df = df
+
+    if not name_filter and not city_filter and not cuisine_filter:
+        st.info("Enter a value in the selected filter above to explore the dataset 🔍")
+        st.stop()
+
+    if filtered_df.empty:
+        st.warning("No results found for your filter.")
+    else:
+        st.dataframe(filtered_df[["Restaurant Name", "City", "Address", "Cuisines", "Aggregate rating", "Votes"]].head(100),
+                     use_container_width=True, height=400)
+        st.markdown("---")
+        with st.expander("🗺️ View Restaurant Locations on Map", expanded=False):
+            if "Latitude" in df.columns and "Longitude" in df.columns:
+                map_data = filtered_df[["Latitude", "Longitude"]].dropna().head(500)
+                if not map_data.empty:
+                    india_center = pd.DataFrame({"Latitude": [22.0], "Longitude": [78.0]})
+                    map_data_final = pd.concat([map_data, india_center])
+                    st.map(map_data_final.rename(columns={"Latitude": "lat", "Longitude": "lon"}))
+                else:
+                    st.info("No valid location data found.")
+            else:
+                st.warning("Latitude/Longitude columns not found.")
