@@ -284,8 +284,84 @@ page = st.session_state.selected_page
 
 # ---- HOME ----
 if page == "Home":
-    st.title("🏠 Welcome to FoodQuest")
-    st.write("Discover restaurants, earn badges, and level up your food journey!")
+    # ------------------- HOMEPAGE -------------------
+    st.markdown("""
+        <div style='text-align:center; padding: 25px 10px;'>
+            <h1 style='font-size:45px;'>🍽️ <b>Welcome to FoodQuest</b></h1>
+            <h4 style='color: #FF4B4B; font-weight: 600;'>Discover. Explore. Level Up your Dining Experience 😋</h4>
+            <p style='font-size:18px; line-height:1.6; color: #808080;'>
+                From hidden gems to global favorites — <b>FoodQuest</b> helps you explore restaurants 
+                that match your <b>taste, budget, and vibe</b>. <br>
+                Earn points 🍜, climb ranks 🏆, and become a true <b>Culinary Legend!</b>
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # 🌟 Quick Stats Section
+    import pandas as pd
+    df = pd.read_csv("data/Dataset.csv")
+    total_restaurants = len(df)
+    total_cities = df['City'].nunique()
+    total_cuisines = df['Cuisines'].nunique()
+
+    st.subheader("📊 Quick Glance at FoodQuest Data")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("🍴 Restaurants", f"{total_restaurants}")
+    with col2:
+        st.metric("🏙️ Cities", f"{total_cities}")
+    with col3:
+        st.metric("🍜 Unique Cuisines", f"{total_cuisines}")
+
+    st.markdown("---")
+
+    # ⚙️ How It Works Section
+    st.markdown("""
+        ### ⚙️ How It Works
+        1️⃣ **Login or Register** to begin your foodie journey.<br>
+        2️⃣ **Get Recommendations** — by restaurant name or your preferences.<br>
+        3️⃣ **Try Restaurants** you love and earn points every time.<br>
+        4️⃣ **Climb the Leaderboard** 🏆 and unlock exciting badges along the way!<br>
+    """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # 🧠 ML Model Explanation
+    st.markdown("""
+        ### 🤖 What Powers FoodQuest?
+        FoodQuest uses a smart <b>Machine Learning Recommendation System</b> 
+        that analyzes <b>cuisines, city, price range, and ratings</b> 
+        to suggest the most relevant restaurants for you. <br>
+        It’s not random — it’s intelligence served fresh! ⚡
+    """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # 💡 Motivation Quote
+    import random
+    quotes = [
+        "“Good food is the foundation of genuine happiness.” 🍰",
+        "“You don’t need a silver fork to eat good food.” 🍴",
+        "“The best memories are made around the table.” 🧆",
+        "“One cannot think well, love well, sleep well, if one has not dined well.” 🍜",
+        "“Life is uncertain. Eat dessert first.” 🍨"
+    ]
+    st.info(random.choice(quotes))
+
+    st.markdown("---")
+
+    # 💡 Why Choose FoodQuest
+    st.markdown("""
+        ### 💡 Why Choose FoodQuest?
+        - 🔍 Intelligent, data-driven restaurant recommendations  
+        - 🏆 Fun gamified experience with points and badges  
+        - 📍 Real-time map integration for restaurant locations  
+        - 🎨 Sleek light/dark mode for every mood  
+        - ⚡ Fast and optimized — built with Python, Streamlit & ML  
+    """)
+
 
 # ---- RECOMMEND BY RESTAURANT ----
 elif page == "Recommend by Restaurant":
