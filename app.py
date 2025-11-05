@@ -108,120 +108,201 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-# ---- ADAPTIVE THEME CSS ----
+# ---- THEME & UI STYLES (re-created from scratch; works for light & dark) ----
+# ---- COMPLETE FIXED THEME STYLING (final version) ----
+st.markdown(f"""
+<style>
+/* ================== GLOBAL RESET ================== */
+* {{
+    box-sizing: border-box !important;
+}}
+body, [data-testid="stAppViewContainer"] {{
+    background: {"linear-gradient(135deg,#1e1e1e 0%,#2a2a2a 100%)" if st.session_state.theme=="dark" else "linear-gradient(135deg,#f8f9fa 0%,#ffe4ec 100%)"} !important;
+    color: {"#f8f8f8" if st.session_state.theme=="dark" else "#222"} !important;
+    font-family: "Inter", sans-serif !important;
+}}
+
+[data-testid="stSidebar"] {{
+    background: {"linear-gradient(135deg,#232323 0%,#1b1b1b 100%)" if st.session_state.theme=="dark" else "linear-gradient(135deg,#fff3f6 0%,#ffe4ec 100%)"} !important;
+    color: {"#f8f8f8" if st.session_state.theme=="dark" else "#222"} !important;
+    border-radius: 10px;
+}}
+
+/* ================== TEXT ELEMENTS ================== */
+h1,h2,h3,h4,h5,h6,p,span,label,div,li {{
+    color: {"#f8f8f8" if st.session_state.theme=="dark" else "#222"} !important;
+}}
+label {{
+    font-weight: 600 !important;
+}}
+
+/* ================== INPUTS & SELECTBOX ================== */
+input, select, textarea, div[data-baseweb="select"] > div {{
+    background-color: {"#2b2b2b" if st.session_state.theme=="dark" else "#fff"} !important;
+    color: {"#f8f8f8" if st.session_state.theme=="dark" else "#222"} !important;
+    border: 1px solid {"#555" if st.session_state.theme=="dark" else "#ccc"} !important;
+    border-radius: 6px !important;
+    padding: 10px 12px !important;
+    font-size: 15px !important;
+    line-height: 1.3 !important;
+}}
+div[data-baseweb="select"] > div {{
+    min-height: 44px !important;
+    display: flex;
+    align-items: center;
+}}
+
+/* Placeholder fix */
+input::placeholder, textarea::placeholder {{
+    color: {"#aaa" if st.session_state.theme=="dark" else "#888"} !important;
+}}
+
+/* Selected text inside select */
+div[data-baseweb="select"] span {{
+    color: inherit !important;
+    line-height: 1.4 !important;
+}}
+
+/* ================== DROPDOWN POPOVER ================== */
+div[data-baseweb="popover"] {{
+    background-color: {"#2b2b2b" if st.session_state.theme=="dark" else "#fff"} !important;
+    border: 1px solid {"#555" if st.session_state.theme=="dark" else "#ccc"} !important;
+    border-radius: 8px !important;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.25) !important;
+    overflow: hidden !important;
+}}
+div[data-baseweb="popover"] [role="option"] {{
+    background-color: transparent !important;
+    color: {"#f8f8f8" if st.session_state.theme=="dark" else "#222"} !important;
+    padding: 10px 14px !important;
+    font-size: 15px !important;
+    line-height: 1.4 !important;
+}}
+div[data-baseweb="popover"] [role="option"]:hover {{
+    background-color: {"#3b3b3b" if st.session_state.theme=="dark" else "#ffe4ec"} !important;
+    color: {"#ffffff" if st.session_state.theme=="dark" else "#000000"} !important;
+}}
+div[data-baseweb="popover"] [aria-selected="true"] {{
+    background-color: {"#444" if st.session_state.theme=="dark" else "#ffd6e4"} !important;
+    color: {"#fff" if st.session_state.theme=="dark" else "#000"} !important;
+}}
+
+/* Scrollbar styling */
+div[data-baseweb="popover"]::-webkit-scrollbar {{
+    width: 8px;
+}}
+div[data-baseweb="popover"]::-webkit-scrollbar-thumb {{
+    background-color: {"#555" if st.session_state.theme=="dark" else "#bbb"} !important;
+    border-radius: 10px;
+}}
+div[data-baseweb="popover"]::-webkit-scrollbar-thumb:hover {{
+    background-color: {"#777" if st.session_state.theme=="dark" else "#999"} !important;
+}}
+
+/* ================== BUTTONS ================== */
+div.stButton > button:first-child {{
+    background-color:#ff4b4b !important;
+    color:white !important;
+    font-weight:600 !important;
+    border-radius:10px !important;
+    box-shadow:0 0 12px rgba(255,75,75,0.4) !important;
+    padding:8px 16px !important;
+    transition:all 0.2s ease !important;
+}}
+div.stButton > button:first-child:hover {{
+    background-color:#ff1e1e !important;
+    transform:scale(1.05);
+}}
+
+/* ================== RADIO / SIDEBAR ================== */
+[data-testid="stSidebar"] [role="radiogroup"] > label:hover {{
+    background: rgba(255,75,75,0.1) !important;
+    border-radius: 8px;
+}}
+[data-testid="stSidebar"] [aria-checked="true"] {{
+    background: linear-gradient(90deg,#ff4b4b,#ff9999) !important;
+    color:white !important;
+    font-weight:600 !important;
+    border-radius:8px !important;
+    box-shadow:0 0 10px rgba(255,75,75,0.5) !important;
+}}
+
+/* ================== FIXED ALIGNMENTS ================== */
+div[data-baseweb="select"] input {{
+    margin: 0 !important;
+    padding: 6px 10px !important;
+}}
+div[data-baseweb="select"] div[role="combobox"] {{
+    align-items: center !important;
+    display: flex !important;
+}}
+</style>
+""", unsafe_allow_html=True)
+
+# ---- FORCE DROPDOWN POPOVER DARK IN DARK MODE (paste after main styles) ----
 if st.session_state.theme == "dark":
     st.markdown("""
     <style>
-    body, [data-testid="stAppViewContainer"] {
-        background: linear-gradient(135deg,#1e1e1e 0%,#2a2a2a 100%) !important;
-        color: #f8f8f8 !important;
+    /* Make the entire popover (list) dark and readable */
+    div[data-baseweb="popover"],
+    div[data-baseweb="popover"] ul,
+    div[data-baseweb="popover"] [role="listbox"] {
+        background-color: #222428 !important;   /* dark blackish background */
+        color: #f5f5f5 !important;               /* bright text */
+        border: 1px solid #3a3a3a !important;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.6) !important;
+        border-radius: 8px !important;
+        overflow: hidden !important;
     }
 
-    [data-testid="stSidebar"] {
-        background: linear-gradient(135deg,#232323 0%,#1b1b1b 100%) !important;
-        color: #f8f8f8 !important;
+    /* Ensure each option is full-opacity and visible */
+    div[data-baseweb="popover"] [role="option"] {
+        background-color: transparent !important;
+        color: #f5f5f5 !important;
+        opacity: 1 !important;                   /* make non-hovered items visible */
+        font-weight: 500 !important;
+        padding: 10px 14px !important;
+        line-height: 1.45 !important;
     }
 
-    /* --- Make all text visible --- */
-    h1, h2, h3, h4, h5, h6, p, span, label, div, li {
-        color: #f8f8f8 !important;
+    /* Hover / selected highlight */
+    div[data-baseweb="popover"] [role="option"]:hover,
+    div[data-baseweb="popover"] [aria-selected="true"] {
+        background-color: #3b3b3b !important;
+        color: #ffffff !important;
     }
 
-    /* --- Inputs, dropdowns, text boxes --- */
-    input, select, textarea {
-        background-color: #2b2b2b !important;
-        color: #f8f8f8 !important;
-        border: 1px solid #555 !important;
-        border-radius:6px !important;
-        padding:6px 10px !important;
-    }
-
-    div[data-baseweb="select"] > div {
-        background-color:#2b2b2b !important;
-        color:#f8f8f8 !important;
-        border: 1px solid #555 !important;
-        border-radius:6px !important;
-    }
-
-    /* --- Radio buttons / labels / markdowns --- */
-    [data-testid="stRadio"], [data-testid="stMarkdownContainer"], [data-testid="stText"], label {
-        color: #f8f8f8 !important;
-    }
-
-    /* --- Buttons --- */
-    div.stButton > button:first-child {
-        background-color:#ff4b4b !important;
-        color:#fff !important;
-        box-shadow:0 0 10px rgba(255,75,75,0.7);
-        font-weight:bold;
-        border-radius:10px !important;
-        transition: all 0.2s ease;
-    }
-    div.stButton > button:first-child:hover {
-        background-color:#ff1e1e !important;
-        transform: scale(1.05);
-    }
-    /* --- Fix invisible text inside dropdown search input --- */
+    /* Make the select control itself match dark theme */
+    div[data-baseweb="select"] > div,
+    div[data-baseweb="select"] span,
     div[data-baseweb="select"] input {
-        color: #f8f8f8 !important;          /* Make typed text visible */
-        background-color: #2b2b2b !important;
+        background-color: #252525 !important;
+        color: #f5f5f5 !important;
+        border: 1px solid #3a3a3a !important;
     }
-    div[data-baseweb="select"] [role="option"] {
-        background-color: #2b2b2b !important;  /* Dropdown list background */
-        color: #f8f8f8 !important;
+
+    /* Keep scrollbar visible on dark background */
+    div[data-baseweb="popover"]::-webkit-scrollbar {
+        width: 8px;
     }
-    div[data-baseweb="select"] [role="option"]:hover {
-        background-color: #3b3b3b !important;  /* Highlight hovered options */
+    div[data-baseweb="popover"]::-webkit-scrollbar-thumb {
+        background: #4a4a4a !important;
+        border-radius: 10px;
     }
     </style>
     """, unsafe_allow_html=True)
-
 else:
+    # Optional: for light theme ensure popover remains light (no change needed usually)
     st.markdown("""
     <style>
-    body, [data-testid="stAppViewContainer"] {
-        background: linear-gradient(135deg,#f8f9fa 0%,#ffe4ec 100%) !important;
-        color: #222 !important;
+    div[data-baseweb="popover"], div[data-baseweb="popover"] ul, div[data-baseweb="popover"] [role="listbox"] {
+        background-color: #ffffff !important;
+        color: #111 !important;
+        border: 1px solid #ddd !important;
     }
-
-    [data-testid="stSidebar"] {
-        background: linear-gradient(135deg,#fff3f6 0%,#ffe4ec 100%) !important;
-        color: #222 !important;
-    }
-
-    /* --- Light mode readable text --- */
-    h1, h2, h3, h4, h5, h6, p, span, label, div, li {
-        color: #222 !important;
-    }
-
-    /* --- Inputs, dropdowns, text boxes --- */
-    input, select, textarea {
-        background-color:#fff !important;
-        color:#222 !important;
-        border:1px solid #ccc !important;
-        border-radius:6px !important;
-        padding:6px 10px !important;
-    }
-
-    div[data-baseweb="select"] > div {
-        background-color:#fff !important;
-        color:#222 !important;
-        border:1px solid #ccc !important;
-        border-radius:6px !important;
-    }
-
-    /* --- Buttons --- */
-    div.stButton > button:first-child {
-        background-color:#ff4b4b !important;
-        color:white !important;
-        box-shadow:0 0 10px rgba(255,75,75,0.4);
-        font-weight:bold;
-        border-radius:10px !important;
-        transition: all 0.2s ease;
-    }
-    div.stButton > button:first-child:hover {
-        background-color:#ff1e1e !important;
-        transform: scale(1.05);
+    div[data-baseweb="popover"] [role="option"] {
+        color: #111 !important;
+        opacity: 1 !important;
     }
     </style>
     """, unsafe_allow_html=True)
