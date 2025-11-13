@@ -10,14 +10,6 @@ from database.db import has_tried, add_user_history, get_user_badges
 # ---------- TEMP DEBUG (paste near top of app.py under imports) ----------
 import sqlite3, pandas as pd, streamlit as _st
 
-if st.sidebar.button("DEBUG: show history"):
-    total, for_user, rows = debug_show_history(st.session_state.username)
-    st.sidebar.write("total history rows:", total)
-    st.sidebar.write(f"rows for current user ({st.session_state.username}):", for_user)
-    st.sidebar.write("sample rows (first 10):")
-    st.sidebar.write(rows)
-# ------------------------------------------------------------------------
-
 # ---- PAGE CONFIG ----
 st.set_page_config(page_title="FoodQuest", layout="wide")
 init_db()
@@ -948,3 +940,4 @@ elif page == "Dataset":
             except Exception as e:
 
                 st.warning(f"Could not load map data: {e}")
+
