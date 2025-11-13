@@ -5,6 +5,33 @@ from utils.gamification import (
     add_points, get_user_data, assign_badge, get_leaderboard
 )
 import pandas as pd
+from database.db import has_tried, add_user_history, get_user_badges
+
+# ---------- TEMP DEBUG (paste near top of app.py under imports) ----------
+import sqlite3, pandas as pd, streamlit as _st
+
+def debug_show_history(username):
+    try:
+        conn = sqlite3.connect("database/foodquest.db")
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM user_restaurant_history")
+        total = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(*) FROM user_restaurant_history WHERE username=?", (username,))
+        for_user = cur.fetchone()[0]
+        cur.execute("SELECT username, restaurant_name, tried_on FROM user_restaurant_history LIMIT 10")
+        rows = cur.fetchall()
+        conn.close()
+        return total, for_user, rows
+    except Exception as e:
+        return "ERROR", str(e), []
+
+if st.sidebar.button("DEBUG: show history"):
+    total, for_user, rows = debug_show_history(st.session_state.username)
+    st.sidebar.write("total history rows:", total)
+    st.sidebar.write(f"rows for current user ({st.session_state.username}):", for_user)
+    st.sidebar.write("sample rows (first 10):")
+    st.sidebar.write(rows)
+# ------------------------------------------------------------------------
 
 # ---- PAGE CONFIG ----
 st.set_page_config(page_title="FoodQuest", layout="wide")
@@ -435,13 +462,16 @@ elif page == "Recommend by Restaurant":
                 st.markdown(f"**{rname}** — _{cuisine}_ ({cty}) | 🔹 {score}")
             with col2:
                 btn_key = f"try_{idx}_{rname}"
+                # ✅ Show Try button instead of auto-adding
                 if st.button("Try 🍽️", key=btn_key):
-                    if rname not in st.session_state.tried_set:
+                    if not has_tried(username, rname):
                         add_points(username, 5)
-                        st.session_state.tried_set.add(rname)
+                        add_user_history(username, rname)
                         st.success(f"You tried {rname}! +5 points 🎉")
                     else:
                         st.info(f"You already tried {rname} before 🍽️")
+
+
 
         # ---- 📍 Map Visualization (All restaurants together) ----
         st.markdown("---")
@@ -807,6 +837,14 @@ elif page == "Profile":
                 transition:width 0.5s;"></div></div>
         <p>Next Badge: <b>{next_badge}</b> — {round(progress*100,1)}% complete</p>
         """, unsafe_allow_html=True)
+        st.markdown("---")
+        st.subheader("🎖️ Badge History")
+        badges = get_user_badges(username)
+        if badges:
+            for badge_name, date, score in badges:
+                st.markdown(f"- {badge_name} — earned on **{date[:10]}**, score at that time: {score}")
+        else:
+            st.info("No badges earned yet. Start exploring to collect them! 🏅")
     else:
         st.warning("Profile not found!")
 
