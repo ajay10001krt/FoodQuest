@@ -10,21 +10,6 @@ from database.db import has_tried, add_user_history, get_user_badges
 # ---------- TEMP DEBUG (paste near top of app.py under imports) ----------
 import sqlite3, pandas as pd, streamlit as _st
 
-def debug_show_history(username):
-    try:
-        conn = sqlite3.connect("database/foodquest.db")
-        cur = conn.cursor()
-        cur.execute("SELECT COUNT(*) FROM user_restaurant_history")
-        total = cur.fetchone()[0]
-        cur.execute("SELECT COUNT(*) FROM user_restaurant_history WHERE username=?", (username,))
-        for_user = cur.fetchone()[0]
-        cur.execute("SELECT username, restaurant_name, tried_on FROM user_restaurant_history LIMIT 10")
-        rows = cur.fetchall()
-        conn.close()
-        return total, for_user, rows
-    except Exception as e:
-        return "ERROR", str(e), []
-
 if st.sidebar.button("DEBUG: show history"):
     total, for_user, rows = debug_show_history(st.session_state.username)
     st.sidebar.write("total history rows:", total)
@@ -961,4 +946,5 @@ elif page == "Dataset":
                 else:
                     st.info("No valid location data found for these restaurants.")
             except Exception as e:
+
                 st.warning(f"Could not load map data: {e}")
