@@ -398,6 +398,8 @@ if page == "Home":
 
     st.info("Tip: Dark Mode looks delicious too 😎 — try switching it from the sidebar!")
 
+if "selected_map_restaurant" not in st.session_state:
+    st.session_state.selected_map_restaurant = None
 
 # ---- RECOMMEND BY RESTAURANT ----
 elif page == "Recommend by Restaurant":
@@ -435,17 +437,21 @@ elif page == "Recommend by Restaurant":
             with col1:
                 st.markdown(f"**{rname}** — _{cuisine}_ ({cty}) | 🔹 {score}")
             with col2:
-                btn_key = f"try_{idx}_{rname}"
-                # ✅ Show Try button instead of auto-adding
-                if st.button("Try 🍽️", key=btn_key):
+                show_key = f"showmap_{idx}_{rname}"
+                try_key = f"try_{idx}_{rname}"
+
+                # 🟡 NEW BUTTON — SHOW ON MAP
+                if st.button("Show on Map 🗺️", key=show_key):
+                    st.session_state.selected_map_restaurant = rname
+
+                # 🍽️ TRY BUTTON (same as before)
+                if st.button("Try 🍽️", key=try_key):
                     if not has_tried(username, rname):
                         add_points(username, 5)
                         add_user_history(username, rname)
                         st.success(f"You tried {rname}! +5 points 🎉")
                     else:
                         st.info(f"You already tried {rname} before 🍽️")
-
-
 
         # ---- 📍 Map Visualization (All restaurants together) ----
         st.markdown("---")
@@ -484,6 +490,24 @@ elif page == "Recommend by Restaurant":
             map_df = map_df.dropna(subset=["Latitude", "Longitude"])
             map_df = map_df.drop_duplicates(subset=["Restaurant Name", "City"])
 
+            # 🟡 HIGHLIGHT SELECTED RESTAURANT
+            selected = st.session_state.get("selected_map_restaurant", None)
+
+            if selected:
+                selected_clean = selected.strip().lower()
+                # Mark selected restaurant
+                map_df["is_selected"] = map_df["Restaurant Name"].str.strip().str.lower() == selected_clean
+            else:
+                map_df["is_selected"] = False
+
+            # Assign color (yellow for selected)
+            def get_color(row):
+                if row["is_selected"]:
+                    return [255, 255, 0]     # 🔶 highlight = yellow
+                return [255, 100, 100] if st.session_state.theme == "dark" else [255, 50, 50]
+
+            map_df["color"] = map_df.apply(get_color, axis=1)
+
             if not map_df.empty:
                 # Theme color
                 point_color = [255, 100, 100] if st.session_state.theme == "dark" else [255, 50, 50]
@@ -493,7 +517,7 @@ elif page == "Recommend by Restaurant":
                     "ScatterplotLayer",
                     data=map_df,
                     get_position='[Longitude, Latitude]',
-                    get_fill_color=point_color,
+                    get_fill_color="color",
                     get_radius=80,
                     radius_scale=10,
                     radius_min_pixels=4,
@@ -507,8 +531,20 @@ elif page == "Recommend by Restaurant":
                 )
 
                 # Center dynamically
-                mean_lat = map_df["Latitude"].mean()
-                mean_lon = map_df["Longitude"].mean()
+                selected = st.session_state.get("selected_map_restaurant", None)
+                if selected:
+                    selected_clean = selected.strip().lower()
+                    if selected_clean in map_df["Restaurant Name Clean"].values:
+                        sel_row = map_df[map_df["Restaurant Name Clean"] == selected_clean].iloc[0]
+                        mean_lat = float(sel_row["Latitude"])
+                        mean_lon = float(sel_row["Longitude"])
+                    else:
+                        mean_lat = map_df["Latitude"].mean()
+                        mean_lon = map_df["Longitude"].mean()
+                else:
+                    mean_lat = map_df["Latitude"].mean()
+                    mean_lon = map_df["Longitude"].mean()
+
                 view_state = pdk.ViewState(latitude=mean_lat, longitude=mean_lon, zoom=10, pitch=0)
 
                 # Tooltip (consistent style)
@@ -565,14 +601,22 @@ elif page == "Recommend by Preferences":
             with col1:
                 st.markdown(f"**{n}** — _{c}_ ({ci}) | ⭐ {r}")
             with col2:
-                btn_key = f"pref_try_{i}_{n}"
-                if st.button("Try 🍽️", key=btn_key):
-                    if n not in st.session_state.tried_set:
+                show_key = f"pref_showmap_{i}_{n}"
+                try_key = f"pref_try_{i}_{n}"
+
+                # 🟡 SHOW ON MAP BUTTON
+                if st.button("Show on Map 🗺️", key=show_key):
+                    st.session_state.selected_map_restaurant = n
+
+                # 🍽️ TRY BUTTON
+                if st.button("Try 🍽️", key=try_key):
+                    if not has_tried(username, n):
                         add_points(username, 5)
-                        st.session_state.tried_set.add(n)
+                        add_user_history(username, n)
                         st.success(f"You tried {n}! +5 points 🎉")
                     else:
                         st.info(f"You already tried {n} before 🍽️")
+
                     
         # ---- 📍 Map Visualization (All restaurants together) ----
         st.markdown("---")
@@ -611,6 +655,23 @@ elif page == "Recommend by Preferences":
             map_df = map_df.dropna(subset=["Latitude", "Longitude"])
             map_df = map_df.drop_duplicates(subset=["Restaurant Name", "City"])
 
+            # 🟡 HIGHLIGHT SELECTED RESTAURANT
+            selected = st.session_state.get("selected_map_restaurant", None)
+
+            if selected:
+                selected_clean = selected.strip().lower()
+                map_df["is_selected"] = map_df["Restaurant Name"].str.strip().str.lower() == selected_clean
+            else:
+                map_df["is_selected"] = False
+
+            # 🎨 DYNAMIC COLOR MAPPING (yellow highlight)
+            def get_color(row):
+                if row["is_selected"]:
+                    return [255, 255, 0]  # bright yellow highlight
+                return [255, 100, 100] if st.session_state.theme == "dark" else [255, 50, 50]
+
+            map_df["color"] = map_df.apply(get_color, axis=1)
+            
             if not map_df.empty:
                 # Theme color
                 point_color = [255, 100, 100] if st.session_state.theme == "dark" else [255, 50, 50]
@@ -620,7 +681,7 @@ elif page == "Recommend by Preferences":
                     "ScatterplotLayer",
                     data=map_df,
                     get_position='[Longitude, Latitude]',
-                    get_fill_color=point_color,
+                    get_fill_color="color",
                     get_radius=80,
                     radius_scale=10,
                     radius_min_pixels=4,
@@ -634,8 +695,20 @@ elif page == "Recommend by Preferences":
                 )
 
                 # Center dynamically
-                mean_lat = map_df["Latitude"].mean()
-                mean_lon = map_df["Longitude"].mean()
+                selected = st.session_state.get("selected_map_restaurant", None)
+                if selected:
+                    selected_clean = selected.strip().lower()
+                    if selected_clean in map_df["Restaurant Name Clean"].values:
+                        sel_row = map_df[map_df["Restaurant Name Clean"] == selected_clean].iloc[0]
+                        mean_lat = float(sel_row["Latitude"])
+                        mean_lon = float(sel_row["Longitude"])
+                    else:
+                        mean_lat = map_df["Latitude"].mean()
+                        mean_lon = map_df["Longitude"].mean()
+                else:
+                    mean_lat = map_df["Latitude"].mean()
+                    mean_lon = map_df["Longitude"].mean()
+
                 view_state = pdk.ViewState(latitude=mean_lat, longitude=mean_lon, zoom=10, pitch=0)
 
                 # Tooltip (consistent style)
