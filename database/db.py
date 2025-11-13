@@ -106,6 +106,13 @@ def add_points(username, points):
     conn.commit()
     conn.close()
 
+    # ---- After updating points, check for badge upgrade ----
+    try:
+        from utils.gamification import check_and_award_badge
+        check_and_award_badge(username)
+    except Exception as e:
+        print("Badge awarding failed:", e)
+
 def get_user_data(username):
     conn = get_connection()
     cur = conn.cursor()

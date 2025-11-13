@@ -7,9 +7,6 @@ from utils.gamification import (
 import pandas as pd
 from database.db import has_tried, add_user_history, get_user_badges
 
-# ---------- TEMP DEBUG (paste near top of app.py under imports) ----------
-import sqlite3, pandas as pd, streamlit as _st
-
 # ---- PAGE CONFIG ----
 st.set_page_config(page_title="FoodQuest", layout="wide")
 init_db()
@@ -938,6 +935,4 @@ elif page == "Dataset":
                 else:
                     st.info("No valid location data found for these restaurants.")
             except Exception as e:
-
                 st.warning(f"Could not load map data: {e}")
-
