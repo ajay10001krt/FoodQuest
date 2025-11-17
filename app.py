@@ -6,6 +6,25 @@ from utils.gamification import (
 )
 import pandas as pd
 from database.db import has_tried, add_user_history, get_user_badges
+from utils.map_utils import render_map_section
+import base64
+from pathlib import Path
+
+def render_logo_inline(path="assets/foodquest_logo.png", width=320):
+    p = Path(path)
+    if not p.exists():
+        st.error(f"Logo not found: {path}")
+        return
+    data = p.read_bytes()
+    data_url = "data:image/png;base64," + base64.b64encode(data).decode()
+    st.markdown(
+        f"""
+        <div style="display:flex; justify-content:center; margin-top:10px; margin-bottom:0px;">
+            <img src="{data_url}" width="{width}" style="max-width:90%; height:auto; border-radius:8px;" />
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
 # ---- PAGE CONFIG ----
 st.set_page_config(page_title="FoodQuest", layout="wide")
@@ -49,7 +68,10 @@ if not st.session_state.logged_in:
         </style>
     """, unsafe_allow_html=True)
 
-    st.markdown("<h1 style='text-align:center;'>🍽️ FoodQuest</h1>", unsafe_allow_html=True)
+    # ---- LOGO (perfectly centered + hi-res) ----
+    render_logo_inline("assets/foodquest_logo.png", width=300)
+
+    # Tabs
     tab1, tab2, tab3 = st.tabs(["🔑 Login", "🆕 Register", "🔄 Reset Password"])
 
     with tab1:
@@ -366,6 +388,7 @@ page = st.session_state.selected_page
 
 # ---- 🏠 HOME PAGE ----
 if page == "Home":
+    render_logo_inline(width=180)
     st.title("🍴 Welcome to FoodQuest!")
     st.markdown("""
     ### 🌍 Embark on your culinary adventure!
@@ -432,19 +455,19 @@ elif page == "Recommend by Restaurant":
 
     if st.session_state.recommendations:
         st.markdown("### 🍴 Recommended Restaurants:")
-        for idx, (rname, cuisine, cty, score) in enumerate(st.session_state.recommendations):
+        for idx, (rname, cuisine, cty, score, lat, lon) in enumerate(st.session_state.recommendations):
             col1, col2 = st.columns([3, 1])
             with col1:
                 st.markdown(f"**{rname}** — _{cuisine}_ ({cty}) | 🔹 {score}")
+                # optionally show coordinates (for debug) - remove if not needed
+                # st.write(f"Latitude: {lat}, Longitude: {lon}")
             with col2:
                 show_key = f"showmap_{idx}_{rname}"
                 try_key = f"try_{idx}_{rname}"
 
-                # 🟡 NEW BUTTON — SHOW ON MAP
                 if st.button("Show on Map 🗺️", key=show_key):
                     st.session_state.selected_map_restaurant = rname
 
-                # 🍽️ TRY BUTTON (same as before)
                 if st.button("Try 🍽️", key=try_key):
                     if not has_tried(username, rname):
                         add_points(username, 5)
@@ -453,162 +476,39 @@ elif page == "Recommend by Restaurant":
                     else:
                         st.info(f"You already tried {rname} before 🍽️")
 
+
         # ---- 📍 Map Visualization (All restaurants together) ----
-        st.markdown("---")
-        st.markdown("### 🗺️ Restaurant Locations on Map")
-
-        try:
-            import pydeck as pdk
-            import pandas as pd
-
-            # ✅ Detect if coordinates exist, else match them once using dataset
-            rec_df = pd.DataFrame(
-                st.session_state.recommendations,
-                columns=["Restaurant Name", "Cuisines", "City", "Score"]
-            )
-
-            # Load coordinates for these restaurants
-            df = pd.read_csv("data/Dataset.csv").fillna("")
-            df["Restaurant Name Clean"] = df["Restaurant Name"].str.strip().str.lower()
-            df["City Clean"] = df["City"].str.strip().str.lower()
-
-            # Normalize recommendation names
-            rec_df["Restaurant Name Clean"] = rec_df["Restaurant Name"].str.strip().str.lower()
-            rec_df["City Clean"] = rec_df["City"].str.strip().str.lower()
-
-            # Merge coordinates from dataset
-            map_df = pd.merge(
-                rec_df,
-                df[["Restaurant Name Clean", "City Clean", "Latitude", "Longitude", "Aggregate rating"]],
-                on=["Restaurant Name Clean", "City Clean"],
-                how="left"
-            )
-
-            # Clean up
-            map_df["Latitude"] = pd.to_numeric(map_df["Latitude"], errors="coerce")
-            map_df["Longitude"] = pd.to_numeric(map_df["Longitude"], errors="coerce")
-            map_df = map_df.dropna(subset=["Latitude", "Longitude"])
-            map_df = map_df.drop_duplicates(subset=["Restaurant Name", "City"])
-
-            # 🟡 HIGHLIGHT SELECTED RESTAURANT
-            selected = st.session_state.get("selected_map_restaurant", None)
-
-            if selected:
-                selected_clean = selected.strip().lower()
-                # Mark selected restaurant
-                map_df["is_selected"] = map_df["Restaurant Name"].str.strip().str.lower() == selected_clean
-            else:
-                map_df["is_selected"] = False
-
-            # Assign color (yellow for selected)
-            def get_color(row):
-                if row["is_selected"]:
-                    return [255, 255, 0]     # 🔶 highlight = yellow
-                return [255, 100, 100] if st.session_state.theme == "dark" else [255, 50, 50]
-
-            map_df["color"] = map_df.apply(get_color, axis=1)
-
-            if not map_df.empty:
-                # Theme color
-                point_color = [255, 100, 100] if st.session_state.theme == "dark" else [255, 50, 50]
-
-                # Scatterplot layer
-                layer = pdk.Layer(
-                    "ScatterplotLayer",
-                    data=map_df,
-                    get_position='[Longitude, Latitude]',
-                    get_fill_color="color",
-                    get_radius=80,
-                    radius_scale=10,
-                    radius_min_pixels=4,
-                    radius_max_pixels=12,
-                    stroked=True,
-                    filled=True,
-                    line_width_min_pixels=1,
-                    get_line_color=[0, 0, 0, 100],
-                    opacity=0.45,
-                    pickable=True
-                )
-
-                # Center dynamically
-                selected = st.session_state.get("selected_map_restaurant", None)
-                if selected:
-                    selected_clean = selected.strip().lower()
-                    if selected_clean in map_df["Restaurant Name Clean"].values:
-                        sel_row = map_df[map_df["Restaurant Name Clean"] == selected_clean].iloc[0]
-                        mean_lat = float(sel_row["Latitude"])
-                        mean_lon = float(sel_row["Longitude"])
-                    else:
-                        mean_lat = map_df["Latitude"].mean()
-                        mean_lon = map_df["Longitude"].mean()
-                else:
-                    mean_lat = map_df["Latitude"].mean()
-                    mean_lon = map_df["Longitude"].mean()
-
-                view_state = pdk.ViewState(latitude=mean_lat, longitude=mean_lon, zoom=10, pitch=0)
-
-                # Tooltip (consistent style)
-                tooltip = {
-                    "html": "<b>🍽️ {Restaurant Name}</b><br/>{Cuisines}<br/>⭐ {Aggregate rating}<br/>🏙️ {City}",
-                    "style": {
-                        "backgroundColor": "rgba(30,30,30,0.85)" if st.session_state.theme == "dark" else "rgba(255,255,255,0.9)",
-                        "color": "#fff" if st.session_state.theme == "dark" else "#000",
-                        "borderRadius": "6px",
-                        "padding": "6px"
-                    }
-                }
-
-                st.pydeck_chart(
-                    pdk.Deck(
-                        layers=[layer],
-                        initial_view_state=view_state,
-                        tooltip=tooltip,
-                        map_style=None
-                    )
-                )
-            else:
-                st.info("No valid location data found for these restaurants.")
-        except Exception as e:
-            st.warning(f"Could not load map data: {e}")
+        render_map_section()
 
 # ---- RECOMMEND BY PREFERENCES ----
 elif page == "Recommend by Preferences":
     st.title("🎯 Recommend by Preferences")
+
     cuisine = st.text_input("Cuisine:")
     city = st.text_input("City:")
     price = st.selectbox("💰 Price Range", [1, 2, 3, 4])
     rating = st.slider("⭐ Min Rating", 0.0, 5.0, 3.5, 0.1)
 
     if st.button("Find Restaurants"):
-        df = pd.read_csv("data/Dataset.csv").fillna('')
-        filtered = df[
-            (df['Cuisines'].str.contains(cuisine, case=False, na=False) if cuisine else True) &
-            (df['City'].str.contains(city, case=False, na=False) if city else True) &
-            (df['Price range'] == price) &
-            (df['Aggregate rating'] >= rating)
-        ]
-        if not filtered.empty:
-            st.session_state.recommendations = list(zip(
-                filtered['Restaurant Name'], filtered['Cuisines'],
-                filtered['City'], filtered['Aggregate rating']
-            ))
-        else:
+        results = recommender.recommend_by_preferences(cuisine, city, price, rating)
+        st.session_state.recommendations = results
+
+        if not results:
             st.warning("No results found.")
 
+    # ---- SHOW RESULTS ----
     if st.session_state.recommendations:
-        for i, (n, c, ci, r) in enumerate(st.session_state.recommendations[:10]):
+        for i, (n, c, ci, sc, lat, lon) in enumerate(st.session_state.recommendations[:10]):
             col1, col2 = st.columns([3, 1])
             with col1:
-                st.markdown(f"**{n}** — _{c}_ ({ci}) | ⭐ {r}")
+                st.markdown(f"**{n}** — _{c}_ ({ci}) | ⭐ {sc}")
             with col2:
                 show_key = f"pref_showmap_{i}_{n}"
                 try_key = f"pref_try_{i}_{n}"
 
-                # 🟡 SHOW ON MAP BUTTON
                 if st.button("Show on Map 🗺️", key=show_key):
                     st.session_state.selected_map_restaurant = n
 
-                # 🍽️ TRY BUTTON
                 if st.button("Try 🍽️", key=try_key):
                     if not has_tried(username, n):
                         add_points(username, 5)
@@ -617,123 +517,7 @@ elif page == "Recommend by Preferences":
                     else:
                         st.info(f"You already tried {n} before 🍽️")
 
-                    
-        # ---- 📍 Map Visualization (All restaurants together) ----
-        st.markdown("---")
-        st.markdown("### 🗺️ Restaurant Locations on Map")
-
-        try:
-            import pydeck as pdk
-            import pandas as pd
-
-            # ✅ Detect if coordinates exist, else match them once using dataset
-            rec_df = pd.DataFrame(
-                st.session_state.recommendations,
-                columns=["Restaurant Name", "Cuisines", "City", "Score"]
-            )
-
-            # Load coordinates for these restaurants
-            df = pd.read_csv("data/Dataset.csv").fillna("")
-            df["Restaurant Name Clean"] = df["Restaurant Name"].str.strip().str.lower()
-            df["City Clean"] = df["City"].str.strip().str.lower()
-
-            # Normalize recommendation names
-            rec_df["Restaurant Name Clean"] = rec_df["Restaurant Name"].str.strip().str.lower()
-            rec_df["City Clean"] = rec_df["City"].str.strip().str.lower()
-
-            # Merge coordinates from dataset
-            map_df = pd.merge(
-                rec_df,
-                df[["Restaurant Name Clean", "City Clean", "Latitude", "Longitude", "Aggregate rating"]],
-                on=["Restaurant Name Clean", "City Clean"],
-                how="left"
-            )
-
-            # Clean up
-            map_df["Latitude"] = pd.to_numeric(map_df["Latitude"], errors="coerce")
-            map_df["Longitude"] = pd.to_numeric(map_df["Longitude"], errors="coerce")
-            map_df = map_df.dropna(subset=["Latitude", "Longitude"])
-            map_df = map_df.drop_duplicates(subset=["Restaurant Name", "City"])
-
-            # 🟡 HIGHLIGHT SELECTED RESTAURANT
-            selected = st.session_state.get("selected_map_restaurant", None)
-
-            if selected:
-                selected_clean = selected.strip().lower()
-                map_df["is_selected"] = map_df["Restaurant Name"].str.strip().str.lower() == selected_clean
-            else:
-                map_df["is_selected"] = False
-
-            # 🎨 DYNAMIC COLOR MAPPING (yellow highlight)
-            def get_color(row):
-                if row["is_selected"]:
-                    return [255, 255, 0]  # bright yellow highlight
-                return [255, 100, 100] if st.session_state.theme == "dark" else [255, 50, 50]
-
-            map_df["color"] = map_df.apply(get_color, axis=1)
-            
-            if not map_df.empty:
-                # Theme color
-                point_color = [255, 100, 100] if st.session_state.theme == "dark" else [255, 50, 50]
-
-                # Scatterplot layer
-                layer = pdk.Layer(
-                    "ScatterplotLayer",
-                    data=map_df,
-                    get_position='[Longitude, Latitude]',
-                    get_fill_color="color",
-                    get_radius=80,
-                    radius_scale=10,
-                    radius_min_pixels=4,
-                    radius_max_pixels=12,
-                    stroked=True,
-                    filled=True,
-                    line_width_min_pixels=1,
-                    get_line_color=[0, 0, 0, 100],
-                    opacity=0.45,
-                    pickable=True
-                )
-
-                # Center dynamically
-                selected = st.session_state.get("selected_map_restaurant", None)
-                if selected:
-                    selected_clean = selected.strip().lower()
-                    if selected_clean in map_df["Restaurant Name Clean"].values:
-                        sel_row = map_df[map_df["Restaurant Name Clean"] == selected_clean].iloc[0]
-                        mean_lat = float(sel_row["Latitude"])
-                        mean_lon = float(sel_row["Longitude"])
-                    else:
-                        mean_lat = map_df["Latitude"].mean()
-                        mean_lon = map_df["Longitude"].mean()
-                else:
-                    mean_lat = map_df["Latitude"].mean()
-                    mean_lon = map_df["Longitude"].mean()
-
-                view_state = pdk.ViewState(latitude=mean_lat, longitude=mean_lon, zoom=10, pitch=0)
-
-                # Tooltip (consistent style)
-                tooltip = {
-                    "html": "<b>🍽️ {Restaurant Name}</b><br/>{Cuisines}<br/>⭐ {Aggregate rating}<br/>🏙️ {City}",
-                    "style": {
-                        "backgroundColor": "rgba(30,30,30,0.85)" if st.session_state.theme == "dark" else "rgba(255,255,255,0.9)",
-                        "color": "#fff" if st.session_state.theme == "dark" else "#000",
-                        "borderRadius": "6px",
-                        "padding": "6px"
-                    }
-                }
-
-                st.pydeck_chart(
-                    pdk.Deck(
-                        layers=[layer],
-                        initial_view_state=view_state,
-                        tooltip=tooltip,
-                        map_style=None
-                    )
-                )
-            else:
-                st.info("No valid location data found for these restaurants.")
-        except Exception as e:
-            st.warning(f"Could not load map data: {e}")
+        render_map_section()
 
 # ---- LEADERBOARD ----
 elif page == "Leaderboard":
