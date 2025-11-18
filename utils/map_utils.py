@@ -9,8 +9,8 @@ def build_map(recommendations, selected_restaurant, theme):
 
     # Recommendations ALREADY contain coordinates now
     map_df = pd.DataFrame(
-        recommendations,
-        columns=["Restaurant Name", "Cuisine", "City", "Score", "Latitude", "Longitude"]
+    recommendations,
+    columns=["Restaurant Name", "Cuisine", "City", "Score", "Latitude", "Longitude", "Address"]
     )
 
     # Clean names
@@ -41,8 +41,8 @@ def build_map(recommendations, selected_restaurant, theme):
         mean_lon = map_df["Longitude"].mean()
 
     tooltip = {
-        "html": "<b>{Restaurant Name}</b><br/>Cuisine: {Cuisine}<br/>City: {City}<br/>Similarity: {Score}",
-        "style": {"backgroundColor": "white", "color": "black"}
+    "html": "<b>{Restaurant Name}</b><br/>Cuisine: {Cuisine}<br/>City: {City}<br/>Similarity: {Score}<br/>Address: {Address}",
+    "style": {"backgroundColor": "white", "color": "black"}
     }
 
     layer = pdk.Layer(

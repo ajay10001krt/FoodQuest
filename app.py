@@ -455,12 +455,12 @@ elif page == "Recommend by Restaurant":
 
     if st.session_state.recommendations:
         st.markdown("### 🍴 Recommended Restaurants:")
-        for idx, (rname, cuisine, cty, score, lat, lon) in enumerate(st.session_state.recommendations):
+        for idx, (rname, cuisine, cty, score, lat, lon, addr) in enumerate(st.session_state.recommendations):
             col1, col2 = st.columns([3, 1])
             with col1:
                 st.markdown(f"**{rname}** — _{cuisine}_ ({cty}) | 🔹 {score}")
-                # optionally show coordinates (for debug) - remove if not needed
-                # st.write(f"Latitude: {lat}, Longitude: {lon}")
+                if addr:
+                    st.caption(f"📍 {addr}")
             with col2:
                 show_key = f"showmap_{idx}_{rname}"
                 try_key = f"try_{idx}_{rname}"
@@ -469,12 +469,22 @@ elif page == "Recommend by Restaurant":
                     st.session_state.selected_map_restaurant = rname
 
                 if st.button("Try 🍽️", key=try_key):
+                    # precise Zomato/Google search using name + address + city
+                    from urllib.parse import quote_plus
+                    query = quote_plus(f"{rname} {addr} {cty} zomato")
+                    zomato_link = f"https://www.google.com/search?q={query}&btnI=1"
+
                     if not has_tried(username, rname):
                         add_points(username, 5)
                         add_user_history(username, rname)
                         st.success(f"You tried {rname}! +5 points 🎉")
+                        
                     else:
                         st.info(f"You already tried {rname} before 🍽️")
+                    st.markdown(
+                            f"<a href='{zomato_link}' target='_blank' style='font-size:16px;'>🔗 View on Zomato (precise)</a>",
+                            unsafe_allow_html=True
+                    )
 
 
         # ---- 📍 Map Visualization (All restaurants together) ----
@@ -498,10 +508,12 @@ elif page == "Recommend by Preferences":
 
     # ---- SHOW RESULTS ----
     if st.session_state.recommendations:
-        for i, (n, c, ci, sc, lat, lon) in enumerate(st.session_state.recommendations[:10]):
+        for i, (n, c, ci, sc, lat, lon, addr) in enumerate(st.session_state.recommendations[:10]):
             col1, col2 = st.columns([3, 1])
             with col1:
                 st.markdown(f"**{n}** — _{c}_ ({ci}) | ⭐ {sc}")
+                if addr:
+                    st.caption(f"📍 {addr}")
             with col2:
                 show_key = f"pref_showmap_{i}_{n}"
                 try_key = f"pref_try_{i}_{n}"
@@ -510,12 +522,21 @@ elif page == "Recommend by Preferences":
                     st.session_state.selected_map_restaurant = n
 
                 if st.button("Try 🍽️", key=try_key):
+                    from urllib.parse import quote_plus
+                    query = quote_plus(f"{n} {addr} {ci} zomato")
+                    zomato_link = f"https://www.google.com/search?q={query}&btnI=1"
+
                     if not has_tried(username, n):
                         add_points(username, 5)
                         add_user_history(username, n)
                         st.success(f"You tried {n}! +5 points 🎉")
+                        
                     else:
                         st.info(f"You already tried {n} before 🍽️")
+                    st.markdown(
+                            f"<a href='{zomato_link}' target='_blank' style='font-size:16px;'>🔗 View on Zomato (precise)</a>",
+                            unsafe_allow_html=True
+                    )
 
         render_map_section()
 

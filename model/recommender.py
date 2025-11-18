@@ -71,13 +71,15 @@ class FoodRecommender:
             except Exception:
                 lat, lon = 0.0, 0.0
 
+            address = row.get("Address", "")  # <- dataset address column
             results.append((
                 name,
                 row.get('Cuisines', ''),
                 row.get('City', '').title(),
                 round(sc, 3),
                 lat,
-                lon
+                lon,
+                address
             ))
 
             if len(results) >= top_n:
@@ -130,13 +132,15 @@ class FoodRecommender:
             except Exception:
                 lat, lon = 0.0, 0.0
 
+            address = row.get("Address", "")
             results.append((
                 name,
                 row.get('Cuisines', ''),
                 row.get('City', '').title(),
                 round(sc, 3),
                 lat,
-                lon
+                lon,
+                address
             ))
 
             if len(results) >= top_n:
