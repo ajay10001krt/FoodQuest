@@ -9,7 +9,7 @@ from database.db import has_tried, add_user_history, get_user_badges
 from utils.map_utils import render_map_section
 import base64
 from pathlib import Path
-#github bug
+
 def render_logo_inline(path="assets/foodquest_logo.png", width=320):
     p = Path(path)
     if not p.exists():
@@ -813,5 +813,4 @@ elif page == "Dataset":
                 else:
                     st.info("No valid location data found for these restaurants.")
             except Exception as e:
-
                 st.warning(f"Could not load map data: {e}")
