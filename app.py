@@ -9,6 +9,8 @@ from database.db import has_tried, add_user_history, get_user_badges
 from utils.map_utils import render_map_section
 import base64
 from pathlib import Path
+import os
+os.environ["STREAMLIT_SERVER_FILE_WATCHER_TYPE"] = "none"
 
 def render_logo_inline(path="assets/foodquest_logo.png", width=320):
     p = Path(path)
