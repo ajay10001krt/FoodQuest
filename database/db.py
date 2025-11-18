@@ -1,6 +1,7 @@
 import sqlite3, os, datetime
 
-DB_PATH = "database/foodquest.db"
+BASE_DIR = os.path.dirname(__file__)    # directory where app.py exist
+db_path = os.path.join(BASE_DIR, "database", "foodquest.db")
 
 def get_connection():
     os.makedirs("database", exist_ok=True)
@@ -159,4 +160,5 @@ def get_user_badges(username):
     cur.execute("SELECT badge_name, earned_on, score_at_time FROM user_badges WHERE username=? ORDER BY earned_on DESC", (username,))
     badges = cur.fetchall()
     conn.close()
+
     return badges
