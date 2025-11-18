@@ -1,7 +1,6 @@
 import sqlite3, os, datetime
 
-BASE_DIR = os.path.dirname(__file__)    # directory where app.py exist
-db_path = os.path.join(BASE_DIR, "database", "foodquest.db")
+DB_PATH = "database/foodquest.db"
 
 def get_connection():
     os.makedirs("database", exist_ok=True)
@@ -162,3 +161,4 @@ def get_user_badges(username):
     conn.close()
 
     return badges
+
