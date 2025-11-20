@@ -62,7 +62,7 @@ def register_user(username, password):
         (username, password, join_date)
     )
 
-    # ✅ Give default badge "Foodie Beginner" at registration
+    # Give default badge "Foodie Beginner" at registration
     cur.execute(
         "INSERT INTO user_badges (username, badge_name, score_at_time) VALUES (?, ?, ?)",
         (username, "🍴 Foodie Beginner", 0)
@@ -71,7 +71,6 @@ def register_user(username, password):
     conn.commit()
     conn.close()
     return True
-
 
 def validate_user(username, password):
     conn = get_connection()
@@ -159,6 +158,4 @@ def get_user_badges(username):
     cur.execute("SELECT badge_name, earned_on, score_at_time FROM user_badges WHERE username=? ORDER BY earned_on DESC", (username,))
     badges = cur.fetchall()
     conn.close()
-
     return badges
-

@@ -2,14 +2,12 @@ import pandas as pd
 import pydeck as pdk
 import streamlit as st
 
-
 def build_map(recommendations, selected_restaurant, theme):
     if not recommendations:
         return None
 
-    # Recommendations ALREADY contain coordinates now
-    map_df = pd.DataFrame(
-    recommendations,
+    # 3rd time i had to modify recommendation logic, this time for address column
+    map_df = pd.DataFrame(recommendations,
     columns=["Restaurant Name", "Cuisine", "City", "Score", "Latitude", "Longitude", "Address"]
     )
 
